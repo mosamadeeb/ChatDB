@@ -1,0 +1,101 @@
+import streamlit as st
+
+from agent import get_agent
+from common import Conversation, init_session_state
+
+st.set_page_config(
+    page_title="Chats",
+    page_icon="🤖",
+)
+
+# Initialize session state variables
+init_session_state()
+
+
+def new_chat_button_on_click():
+    st.session_state.current_conversation = ""
+
+
+def set_conversation(conversation_id):
+    st.session_state.current_conversation = conversation_id
+
+
+# Sidebar
+with st.sidebar:
+    st.markdown("## Chats")
+
+    st.button("➕ New chat", on_click=new_chat_button_on_click)
+
+    st.divider()
+
+    # TODO: put fields to update conversation params here and update last_update_timestamp whenever they're submitted
+    # st.divider()
+
+    for conversation_id in st.session_state.conversations.keys():
+        st.button(conversation_id, on_click=set_conversation, args=[conversation_id])
+
+# Main view
+if st.session_state.current_conversation == "":
+    st.title("New conversation")
+
+    # Display form for creating a new conversation
+    with st.form("new_conversation_form"):
+        conversation_id = st.text_input("Conversation title")
+        vector_store_id = st.selectbox("Select vector store", tuple(st.session_state.vector_stores.keys()))
+        database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
+
+        if st.form_submit_button():
+            if conversation_id in st.session_state.conversations:
+                st.error("Conversation title has to be unique!", icon="🚨")
+            else:
+                st.session_state.conversations[conversation_id] = Conversation(
+                    conversation_id, vector_store_id, database_ids
+                )
+                set_conversation(conversation_id)
+
+else:
+    conversation_id = st.session_state.current_conversation
+    conversation: Conversation = st.session_state.conversations[conversation_id]
+
+    st.title(conversation_id)
+
+    # Display chat messages from history on app rerun
+    for message in conversation.messages:
+        with st.chat_message(message.role):
+            st.markdown(message.content)
+
+    # Initialize the agent
+    get_agent(conversation_id, conversation.last_update_timestamp)
+
+    if len(conversation.messages) == 0:
+        # Display initial message
+        with st.chat_message("assistant"):
+            st.markdown("How can I help you today?")
+
+    # Accept user input
+    if prompt := st.chat_input("Your query"):
+        # Display message in chat message container
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Add user message to chat history
+        conversation.add_message("user", prompt)
+
+        # Retrieve agent
+        agent = get_agent(conversation_id, conversation.last_update_timestamp)
+        full_response = ""
+
+        # Display assistant response in chat message container
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+
+            # Incrementally display response as it is streamed from the agent
+            for response in agent.stream_chat(prompt).response_gen:
+                full_response += response
+                message_placeholder.markdown(full_response + "▌")
+
+            # Display full message once it is retrieved
+            message_placeholder.markdown(full_response)
+
+        # Add assistant message to chat history
+        conversation.add_message("assistant", full_response)
