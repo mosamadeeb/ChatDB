@@ -77,9 +77,13 @@ class Message:
     role: str
     content: str
 
-    def __init__(self, role, content) -> None:
+    query_results: List[Tuple[str, list]]
+
+    def __init__(self, role, content, query_results=None) -> None:
         self.role = role
         self.content = content
+
+        self.query_results = query_results or []
 
 
 class Conversation:
@@ -89,6 +93,7 @@ class Conversation:
     database_ids: List[str]
 
     messages: List[Message]
+    query_results_queue: List[Tuple[str, list]]
 
     # Used to invalidate get_agent() cache
     # Whenever we update the vector stores/database ids of a conversation, we update this timestamp
@@ -107,11 +112,12 @@ class Conversation:
         self.database_ids = list(database_ids)
 
         self.messages = list(messages) if messages else list()
+        self.query_results_queue = list()
 
         self.update_timestamp()
 
-    def add_message(self, role, content):
-        self.messages.append(Message(role, content))
+    def add_message(self, role, content, query_results=None):
+        self.messages.append(Message(role, content, query_results))
 
     def update_timestamp(self):
         self.last_update_timestamp = datetime.now().timestamp()

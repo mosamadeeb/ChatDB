@@ -1,3 +1,5 @@
+from typing import Callable, Iterable, List
+
 import pinecone
 import streamlit as st
 from llama_hub.tools.database.base import DatabaseToolSpec
@@ -5,8 +7,44 @@ from llama_index import Document, StorageContext, VectorStoreIndex
 from llama_index.agent import OpenAIAgent
 from llama_index.tools import QueryEngineTool, ToolMetadata
 from llama_index.vector_stores import PineconeVectorStore, SimpleVectorStore
+from sqlalchemy import text
 
 from common import Conversation, DatabaseProps, VectorStoreType, get_vector_store_type
+
+
+class TrackingDatabaseToolSpec(DatabaseToolSpec):
+    handler: Callable[[str, Iterable], None]
+
+    def set_handler(self, func: Callable):
+        self.handler = func
+
+    def load_data(self, query: str) -> List[Document]:
+        """Query and load data from the Database, returning a list of Documents.
+
+        Args:
+            query (str): an SQL query to filter tables and rows.
+
+        Returns:
+            List[Document]: A list of Document objects.
+        """
+        documents = []
+        with self.sql_database.engine.connect() as connection:
+            if query is None:
+                raise ValueError("A query parameter is necessary to filter the data")
+            else:
+                result = connection.execute(text(query))
+
+            items = result.fetchall()
+
+            if self.handler:
+                self.handler(query, items)
+
+            for item in items:
+                # fetch each item
+                doc_str = ", ".join([str(entry) for entry in item])
+                documents.append(Document(text=doc_str))
+        return documents
+
 
 @st.cache_resource(show_spinner="Retrieving vector store...")
 def get_storage_context(vector_store_id: str):
@@ -40,10 +78,10 @@ def get_storage_context(vector_store_id: str):
 
 
 @st.cache_resource(show_spinner="Connecting to database...")
-def get_database_spec(database_id: str) -> DatabaseToolSpec:
+def get_database_spec(database_id: str) -> TrackingDatabaseToolSpec:
     database: DatabaseProps = st.session_state.databases[database_id]
 
-    db_spec = DatabaseToolSpec(
+    db_spec = TrackingDatabaseToolSpec(
         uri=database.uri,
     )
 
@@ -60,15 +98,11 @@ def get_query_tool(vector_store_id: str, database_id: str) -> QueryEngineTool:
     documents = []
     for table in table_list:
         description = db_spec.describe_tables([table])
-        documents.append(
-            Document(text=f'Definition of "{table}" table:\n{description}')
-        )
+        documents.append(Document(text=f'Definition of "{table}" table:\n{description}'))
 
     # Get the storage context to create a vector index with it
     storage_context = get_storage_context(vector_store_id)
-    index = VectorStoreIndex.from_documents(
-        documents=documents, storage_context=storage_context
-    )
+    index = VectorStoreIndex.from_documents(documents=documents, storage_context=storage_context)
 
     engine = index.as_query_engine()
     query_tool = QueryEngineTool(
@@ -80,6 +114,11 @@ def get_query_tool(vector_store_id: str, database_id: str) -> QueryEngineTool:
     )
 
     return query_tool
+
+
+def database_spec_handler(query, items):
+    conversation = st.session_state.conversations[st.session_state.current_conversation]
+    conversation.query_results_queue.append((query, items))
 
 
 @st.cache_resource(show_spinner="Creating agent...")
@@ -97,6 +136,9 @@ def get_agent(conversation_id: str, last_update_timestamp: float):
     for database_id in conversation.database_ids:
         db_spec = get_database_spec(database_id)
         query_tool = get_query_tool(vector_store_id, database_id)
+
+        # Set a handler that can be called whenever a query is executed
+        db_spec.set_handler(database_spec_handler)
 
         # Add query tool and database tools
         tools.append(query_tool)
