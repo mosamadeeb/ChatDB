@@ -90,6 +90,11 @@ with st.expander("Configure"):
 
 st.divider()
 
+with st.expander("View vector stores"):
+    st.table({k: v.get_props() for k, v in st.session_state.vector_stores.items()})
+
+st.divider()
+
 # Databases
 st.markdown("## Databases")
 with st.expander("Configure"):
@@ -118,3 +123,8 @@ with st.expander("Configure"):
 
         st.session_state.databases[database_id] = DatabaseProps(database_id, database_uri)
         st.toast("Database saved!", icon="✔️")
+
+st.divider()
+
+with st.expander("View databases"):
+    st.table({k: {"URI": st.session_state.databases[k].uri} for k in st.session_state.databases})

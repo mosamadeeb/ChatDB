@@ -1,19 +1,25 @@
+from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import IntEnum
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import streamlit as st
 
 
-class BaseVectorStoreProps:
+class BaseVectorStoreProps(ABC):
     id: str
 
     def __init__(self, id) -> None:
         self.id = id
 
+    @abstractmethod
+    def get_props(self) -> dict:
+        pass
+
 
 class InMemoryVectorStoreProps(BaseVectorStoreProps):
-    pass
+    def get_props(self) -> dict:
+        return {"Type": "In-memory"}
 
 
 class PineconeVectorStoreProps(BaseVectorStoreProps):
@@ -29,6 +35,9 @@ class PineconeVectorStoreProps(BaseVectorStoreProps):
         self.api_key = api_key
         self.environment = environment
         self.index_name = index_name
+
+    def get_props(self) -> dict:
+        return {"Type": "Pinecone", "API key": self.api_key, "Environment": self.environment, "Index name": self.index_name}
 
 
 class VectorStoreType(IntEnum):
