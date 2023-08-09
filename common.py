@@ -27,9 +27,7 @@ class PineconeVectorStoreProps(BaseVectorStoreProps):
     environment: str
     index_name: str
 
-    def __init__(
-        self, id: str, api_key: str, environment: str, index_name: str
-    ) -> None:
+    def __init__(self, id: str, api_key: str, environment: str, index_name: str) -> None:
         super().__init__(id)
 
         self.api_key = api_key
@@ -37,7 +35,12 @@ class PineconeVectorStoreProps(BaseVectorStoreProps):
         self.index_name = index_name
 
     def get_props(self) -> dict:
-        return {"Type": "Pinecone", "API key": self.api_key, "Environment": self.environment, "Index name": self.index_name}
+        return {
+            "Type": "Pinecone",
+            "API key": self.api_key,
+            "Environment": self.environment,
+            "Index name": self.index_name,
+        }
 
 
 class VectorStoreType(IntEnum):
@@ -136,3 +139,6 @@ def init_session_state():
 
     if "current_conversation" not in st.session_state:
         st.session_state.current_conversation: str = ""
+
+    if "retry" not in st.session_state:
+        st.session_state.retry = None
