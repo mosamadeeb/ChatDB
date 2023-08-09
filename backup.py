@@ -3,7 +3,7 @@ import json
 import jsonpickle
 import streamlit as st
 
-from common import Conversation
+from common import Conversation, set_openai_api_key
 from encryption import DEFAULT_KEY, decrypt, decrypt_prop, encrypt, encrypt_prop, generate_key
 
 BACKUP_PROPS = ["openai_key", "vector_stores", "databases", "current_conversation"]
@@ -41,6 +41,7 @@ def load_settings(backup: dict, password: str):
 
             if prop == "openai_key":
                 value = decrypt(value.encode("utf-8"), enc_key).decode("utf-8")
+                set_openai_api_key(value)
 
             st.session_state[prop] = value
 

@@ -1,4 +1,5 @@
 import json
+import re
 
 import streamlit as st
 from sqlalchemy.exc import DBAPIError
@@ -68,7 +69,8 @@ with st.sidebar:
                 if st.button("Backup conversation"):
                     backup_file = json.dumps(backup_conversation(conversation_id))
 
-                    st.download_button("Download backup JSON", data=backup_file, file_name="chatdb_settings.json")
+                    no_whitespace_name = re.sub(r"\s+", '_', conversation_id)
+                    st.download_button("Download backup JSON", data=backup_file, file_name=f"chatdb_{no_whitespace_name}.json")
 
         st.divider()
 
@@ -83,6 +85,10 @@ if not conversation_exists(st.session_state.current_conversation):
     # Display form for creating a new conversation
     with st.form("new_conversation_form"):
         conversation_id = st.text_input("Conversation title")
+
+        agent_model = st.text_input("Agent model", value="gpt-3.5-turbo-0613")
+        predictor_model = st.text_input("Predictor model", value="text-davinci-003")
+
         vector_store_id = st.selectbox("Select vector store", tuple(st.session_state.vector_stores.keys()))
         database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
 
@@ -91,7 +97,7 @@ if not conversation_exists(st.session_state.current_conversation):
                 st.error("Conversation title has to be unique!", icon="🚨")
             else:
                 st.session_state.conversations[conversation_id] = Conversation(
-                    conversation_id, vector_store_id, database_ids
+                    conversation_id, agent_model, predictor_model, vector_store_id, database_ids
                 )
                 set_conversation(conversation_id)
 

@@ -3,9 +3,10 @@ from typing import Callable, Iterable, List
 import pinecone
 import streamlit as st
 from llama_hub.tools.database.base import DatabaseToolSpec
-from llama_index import Document, StorageContext, VectorStoreIndex
+from llama_index import Document, ServiceContext, StorageContext, VectorStoreIndex
 from llama_index.agent import OpenAIAgent
 from llama_index.agent.openai_agent import ChatMessage
+from llama_index.llms import OpenAI
 from llama_index.tools import QueryEngineTool, ToolMetadata
 from llama_index.vector_stores import PineconeVectorStore, SimpleVectorStore
 from sqlalchemy import text
@@ -45,6 +46,13 @@ class TrackingDatabaseToolSpec(DatabaseToolSpec):
                 doc_str = ", ".join([str(entry) for entry in item])
                 documents.append(Document(text=doc_str))
         return documents
+
+
+@st.cache_resource(show_spinner="Loading LLM...")
+def get_llm(model: str, api_key: str):
+    # API key is a parameter here to force invalidate the cache whenever the API key is changed
+    _ = api_key
+    return OpenAI(model=model)
 
 
 @st.cache_resource(show_spinner="Retrieving vector store...")
@@ -90,7 +98,7 @@ def get_database_spec(database_id: str) -> TrackingDatabaseToolSpec:
 
 
 @st.cache_resource(show_spinner="Generating tools...")
-def get_query_tool(vector_store_id: str, database_id: str) -> QueryEngineTool:
+def get_query_tool(vector_store_id: str, database_id: str, predictor_model: str) -> QueryEngineTool:
     # This function is cached as a resource, so calling it here is fine
     db_spec = get_database_spec(database_id)
 
@@ -98,12 +106,21 @@ def get_query_tool(vector_store_id: str, database_id: str) -> QueryEngineTool:
 
     documents = []
     for table in table_list:
+        if table.startswith("system$") or table.startswith("mendixsystem$") or table.startswith("gceuser"):
+            continue
+
         description = db_spec.describe_tables([table])
         documents.append(Document(text=f'Definition of "{table}" table:\n{description}'))
 
+    # Create LLM with the specified model
+    llm = get_llm(predictor_model, st.session_state.openai_key)
+    service_context = ServiceContext.from_defaults(llm=llm)
+
     # Get the storage context to create a vector index with it
     storage_context = get_storage_context(vector_store_id)
-    index = VectorStoreIndex.from_documents(documents=documents, storage_context=storage_context)
+    index = VectorStoreIndex.from_documents(
+        documents=documents, storage_context=storage_context, service_context=service_context
+    )
 
     engine = index.as_query_engine()
     query_tool = QueryEngineTool(
@@ -136,7 +153,7 @@ def get_agent(conversation_id: str, last_update_timestamp: float):
     # Create tools
     for database_id in conversation.database_ids:
         db_spec = get_database_spec(database_id)
-        query_tool = get_query_tool(vector_store_id, database_id)
+        query_tool = get_query_tool(vector_store_id, database_id, conversation.predictor_model)
 
         # Set a handler that can be called whenever a query is executed
         db_spec.set_handler(database_spec_handler)
@@ -148,8 +165,10 @@ def get_agent(conversation_id: str, last_update_timestamp: float):
     # Load chat history from the conversation's messages
     chat_history = list(map(lambda m: ChatMessage(role=m.role, content=m.content), conversation.messages))
 
+    # Create an LLM with the specified model
+    llm = get_llm(conversation.agent_model, st.session_state.openai_key)
+
     # Create the Agent with our tools
-    # TODO: remove verbose flag
-    agent = OpenAIAgent.from_tools(tools, chat_history=chat_history, verbose=True)
+    agent = OpenAIAgent.from_tools(tools, llm=llm, chat_history=chat_history)
 
     return agent

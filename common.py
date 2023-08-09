@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import IntEnum
 from typing import Dict, List, Tuple
 
+import openai
 import streamlit as st
 
 
@@ -92,6 +93,9 @@ class Message:
 class Conversation:
     id: str
 
+    agent_model: str
+    predictor_model: str
+
     vector_store_id: str
     database_ids: List[str]
 
@@ -105,12 +109,17 @@ class Conversation:
 
     def __init__(
         self,
-        id,
+        id: str,
+        agent_model: str,
+        predictor_model: str,
         vector_store_id: str,
         database_ids: List[str],
         messages: List[Message] = None,
     ) -> None:
         self.id = id
+        self.agent_model = agent_model
+        self.predictor_model = predictor_model
+
         self.vector_store_id = vector_store_id
         self.database_ids = list(database_ids)
 
@@ -144,3 +153,9 @@ def init_session_state():
 
     if "retry" not in st.session_state:
         st.session_state.retry = None
+
+
+def set_openai_api_key(api_key):
+    # Set API key in openai module
+    openai.api_key = api_key
+    st.session_state.openai_key = api_key

@@ -13,6 +13,7 @@ from common import (
     VectorStoreType,
     get_vector_store_type,
     init_session_state,
+    set_openai_api_key,
 )
 
 st.set_page_config(
@@ -35,7 +36,7 @@ with st.form("openai_key_form", clear_on_submit=True):
     api_key = st.text_input("API key")
 
     if st.form_submit_button():
-        st.session_state.openai_key = api_key
+        set_openai_api_key(api_key)
 
 if st.session_state.openai_key:
     st.info("API key is set.", icon="ℹ️")
