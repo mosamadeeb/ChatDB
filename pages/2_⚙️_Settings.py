@@ -1,3 +1,5 @@
+import json
+
 import streamlit as st
 
 from common import (
@@ -5,8 +7,10 @@ from common import (
     InMemoryVectorStoreProps,
     PineconeVectorStoreProps,
     VectorStoreType,
+    backup_settings,
     get_vector_store_type,
     init_session_state,
+    load_settings,
 )
 
 st.set_page_config(
@@ -128,3 +132,22 @@ st.divider()
 
 with st.expander("View databases"):
     st.table({k: {"URI": st.session_state.databases[k].uri} for k in st.session_state.databases})
+
+st.divider()
+
+st.markdown("## Backup settings")
+
+st.markdown("- ### Backup")
+with st.empty():
+    if st.button("Prepare backup"):
+        # Prepare JSON file
+        backup_file = json.dumps(backup_settings(), indent=2)
+
+        st.download_button("Download settings JSON", data=backup_file, file_name="chatdb_settings.json")
+
+st.markdown("- ### Restore")
+upload_file = st.file_uploader("Restore settings from JSON")
+
+if upload_file:
+    load_settings(json.load(upload_file))
+    st.toast("Settings restored!", icon="✔️")
