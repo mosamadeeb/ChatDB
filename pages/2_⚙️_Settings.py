@@ -20,6 +20,9 @@ st.set_page_config(
     page_icon="⚙️",
 )
 
+NEW_VECTOR_STORE_TEXT = "➕ Add new vector store"
+NEW_DATABASE_TEXT = "➕ Add new database"
+
 # Initialize session state variables
 init_session_state()
 
@@ -27,8 +30,19 @@ st.title("⚙️ Settings")
 
 st.divider()
 
-NEW_VECTOR_STORE_TEXT = "➕ Add new vector store"
-NEW_DATABASE_TEXT = "➕ Add new database"
+st.markdown("## OpenAI API key")
+with st.form("openai_key_form", clear_on_submit=True):
+    api_key = st.text_input("API key")
+
+    if st.form_submit_button():
+        st.session_state.openai_key = api_key
+
+if st.session_state.openai_key:
+    st.info("API key is set.", icon="ℹ️")
+else:
+    st.warning("API key is not set.", icon="⚠️")
+
+st.divider()
 
 # Vector stores
 st.markdown("## Vector stores")
@@ -157,6 +171,7 @@ upload_file = st.file_uploader("Restore settings from JSON")
 if upload_file:
     backup_file = json.load(upload_file)
 
+    loaded = False
     try:
         if "use_default_key" in backup_file and not backup_file["use_default_key"]:
             st.markdown("Backup is encrypted!")
@@ -167,9 +182,12 @@ if upload_file:
 
             if st.button("Decrypt and restore"):
                 load_settings(backup_file, password)
+                loaded = True
         else:
             load_settings(backup_file, None)
+            loaded = True
     except InvalidEncryptionKey:
         st.error("Invalid decryption key.", icon="🚨")
     else:
-        st.success("Settings restored!", icon="✔️")
+        if loaded:
+            st.success("Settings restored!", icon="✔️")

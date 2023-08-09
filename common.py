@@ -127,6 +127,9 @@ class Conversation:
 
 
 def init_session_state():
+    if "openai_key" not in st.session_state:
+        st.session_state.openai_key = ""
+
     if "vector_stores" not in st.session_state:
         st.session_state.vector_stores: Dict[str, BaseVectorStoreProps] = dict()
 

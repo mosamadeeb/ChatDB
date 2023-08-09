@@ -99,6 +99,10 @@ elif not conversation_valid(st.session_state.current_conversation):
     st.title(st.session_state.current_conversation)
 
     st.markdown("### Could not load conversation due to missing parameters!\n\nDid you forget to restore the settings?")
+
+elif not st.session_state.openai_key:
+    st.error("OpenAI API key not set. Go to ⚙️ Settings page!", "🚨")
+
 else:
     conversation_id = st.session_state.current_conversation
     conversation: Conversation = st.session_state.conversations[conversation_id]

@@ -4,15 +4,15 @@ import jsonpickle
 import streamlit as st
 
 from common import Conversation
-from encryption import decrypt_prop, encrypt_prop, generate_key, DEFAULT_KEY
+from encryption import DEFAULT_KEY, decrypt, decrypt_prop, encrypt, encrypt_prop, generate_key
 
-BACKUP_PROPS = ["vector_stores", "databases", "current_conversation"]
+BACKUP_PROPS = ["openai_key", "vector_stores", "databases", "current_conversation"]
 
 
 def backup_settings(password: str) -> dict:
     backup = dict()
 
-    backup['use_default_key'] = not password
+    backup["use_default_key"] = not password
     enc_key = generate_key(password) if password else DEFAULT_KEY
 
     for prop in BACKUP_PROPS:
@@ -20,6 +20,9 @@ def backup_settings(password: str) -> dict:
 
         if isinstance(value, dict):
             value = {k: json.loads(jsonpickle.encode(encrypt_prop(v, enc_key))) for k, v in value.items()}
+
+        if prop == "openai_key":
+            value = encrypt(value.encode("utf-8"), enc_key).decode("utf-8")
 
         backup[prop] = value
 
@@ -35,6 +38,9 @@ def load_settings(backup: dict, password: str):
 
             if isinstance(value, dict):
                 value = {k: decrypt_prop(jsonpickle.decode(json.dumps(v)), enc_key) for k, v in value.items()}
+
+            if prop == "openai_key":
+                value = decrypt(value.encode("utf-8"), enc_key).decode("utf-8")
 
             st.session_state[prop] = value
 
