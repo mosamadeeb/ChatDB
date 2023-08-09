@@ -1,8 +1,10 @@
+import json
+
 import streamlit as st
 from sqlalchemy.exc import DBAPIError
 
 from agent import get_agent
-from common import Conversation, init_session_state
+from common import Conversation, backup_conversation, init_session_state, load_conversation
 
 st.set_page_config(
     page_title="Chats",
@@ -25,22 +27,56 @@ def retry_chat(prompt: str, stream: bool):
     st.session_state.retry = {"stream": stream, "prompt": prompt}
 
 
+def conversation_exists(id: str) -> bool:
+    return id != "" and id in st.session_state.conversations
+
+
+def conversation_valid(id: str):
+    if conversation_exists(id):
+        conversation: Conversation = st.session_state.conversations[id]
+        return conversation.vector_store_id in st.session_state.vector_stores and all(
+            [x in st.session_state.databases for x in conversation.database_ids]
+        )
+
+    return False
+
+
 # Sidebar
 with st.sidebar:
     st.markdown("## Chats")
 
     st.button("➕ New chat", on_click=new_chat_button_on_click)
 
+    upload_file = st.file_uploader("Restore conversation from JSON")
+
+    if upload_file:
+        conversation = load_conversation(json.load(upload_file))
+        st.session_state.conversations[conversation.id] = conversation
+
+        st.toast("Conversation restored!", icon="✔️")
+
     st.divider()
 
-    # TODO: put fields to update conversation params here and update last_update_timestamp whenever they're submitted
-    # st.divider()
+    if conversation_exists(st.session_state.current_conversation):
+        st.markdown("## Current conversation")
 
+        conversation_id = st.session_state.current_conversation
+        with st.expander(conversation_id):
+            # TODO: put fields to update conversation params here and update last_update_timestamp whenever they're submitted
+            with st.empty():
+                if st.button("Backup conversation"):
+                    backup_file = json.dumps(backup_conversation(conversation_id))
+
+                    st.download_button("Download backup JSON", data=backup_file, file_name="chatdb_settings.json")
+
+        st.divider()
+
+    st.markdown("## Select conversation")
     for conversation_id in st.session_state.conversations.keys():
         st.button(conversation_id, on_click=set_conversation, args=[conversation_id])
 
 # Main view
-if st.session_state.current_conversation == "":
+if not conversation_exists(st.session_state.current_conversation):
     st.title("New conversation")
 
     # Display form for creating a new conversation
@@ -58,6 +94,10 @@ if st.session_state.current_conversation == "":
                 )
                 set_conversation(conversation_id)
 
+elif not conversation_valid(st.session_state.current_conversation):
+    st.title(st.session_state.current_conversation)
+
+    st.markdown("### Could not load conversation due to missing parameters!\n\nDid you forget to restore the settings?")
 else:
     conversation_id = st.session_state.current_conversation
     conversation: Conversation = st.session_state.conversations[conversation_id]

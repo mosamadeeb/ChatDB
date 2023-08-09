@@ -171,3 +171,15 @@ def load_settings(backup: dict):
                 value = {k: jsonpickle.decode(v) for k, v in value.items()}
 
             st.session_state[prop] = value
+
+
+def backup_conversation(id: str) -> dict:
+    if id not in st.session_state.conversations:
+        return None
+
+    return jsonpickle.encode(st.session_state.conversations[id])
+
+
+def load_conversation(backup) -> Conversation:
+    # As this will create a new object, the timestamp will be updated
+    return jsonpickle.decode(backup)

@@ -5,6 +5,7 @@ import streamlit as st
 from llama_hub.tools.database.base import DatabaseToolSpec
 from llama_index import Document, StorageContext, VectorStoreIndex
 from llama_index.agent import OpenAIAgent
+from llama_index.agent.openai_agent import ChatMessage
 from llama_index.tools import QueryEngineTool, ToolMetadata
 from llama_index.vector_stores import PineconeVectorStore, SimpleVectorStore
 from sqlalchemy import text
@@ -144,9 +145,11 @@ def get_agent(conversation_id: str, last_update_timestamp: float):
         tools.append(query_tool)
         tools += db_spec.to_tool_list()
 
+    # Load chat history from the conversation's messages
+    chat_history = list(map(lambda m: ChatMessage(role=m.role, content=m.content), conversation.messages))
+
     # Create the Agent with our tools
-    # TODO: save chat history somewhere so we can load it here
     # TODO: remove verbose flag
-    agent = OpenAIAgent.from_tools(tools, verbose=True)
+    agent = OpenAIAgent.from_tools(tools, chat_history=chat_history, verbose=True)
 
     return agent
