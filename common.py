@@ -3,7 +3,6 @@ from datetime import datetime
 from enum import IntEnum
 from typing import Dict, List, Tuple
 
-import jsonpickle
 import streamlit as st
 
 
@@ -142,44 +141,3 @@ def init_session_state():
 
     if "retry" not in st.session_state:
         st.session_state.retry = None
-
-
-BACKUP_PROPS = ["vector_stores", "databases", "current_conversation"]
-
-
-# TODO: encrypt API keys before backup and decrypt when loading
-def backup_settings() -> dict:
-    backup = dict()
-
-    for prop in BACKUP_PROPS:
-        value = st.session_state[prop]
-
-        if isinstance(value, dict):
-            value = {k: jsonpickle.encode(v) for k, v in value.items()}
-
-        backup[prop] = value
-
-    return backup
-
-
-def load_settings(backup: dict):
-    for prop in BACKUP_PROPS:
-        if prop in backup:
-            value = backup[prop]
-
-            if isinstance(value, dict):
-                value = {k: jsonpickle.decode(v) for k, v in value.items()}
-
-            st.session_state[prop] = value
-
-
-def backup_conversation(id: str) -> dict:
-    if id not in st.session_state.conversations:
-        return None
-
-    return jsonpickle.encode(st.session_state.conversations[id])
-
-
-def load_conversation(backup) -> Conversation:
-    # As this will create a new object, the timestamp will be updated
-    return jsonpickle.decode(backup)

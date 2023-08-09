@@ -2,15 +2,17 @@ import json
 
 import streamlit as st
 
+# For clarity
+from cryptography.fernet import InvalidToken as InvalidEncryptionKey
+
+from backup import backup_settings, load_settings
 from common import (
     DatabaseProps,
     InMemoryVectorStoreProps,
     PineconeVectorStoreProps,
     VectorStoreType,
-    backup_settings,
     get_vector_store_type,
     init_session_state,
-    load_settings,
 )
 
 st.set_page_config(
@@ -134,10 +136,18 @@ st.divider()
 st.markdown("## Backup settings")
 
 st.markdown("- ### Backup")
+password = st.text_input(
+    "Encryption password",
+    help="This will be used to encrypt your API keys before backup. If no password is provided, the data will still be encrypted but using a common encryption key",
+)
+
 with st.empty():
     if st.button("Prepare backup"):
         # Prepare JSON file
-        backup_file = json.dumps(backup_settings(), indent=2)
+        backup_file = json.dumps(backup_settings(password), indent=2)
+
+        if password:
+            st.info("Your backup is encrypted with the password you provided.", icon="ℹ️")
 
         st.download_button("Download settings JSON", data=backup_file, file_name="chatdb_settings.json")
 
@@ -145,5 +155,21 @@ st.markdown("- ### Restore")
 upload_file = st.file_uploader("Restore settings from JSON")
 
 if upload_file:
-    load_settings(json.load(upload_file))
-    st.toast("Settings restored!", icon="✔️")
+    backup_file = json.load(upload_file)
+
+    try:
+        if "use_default_key" in backup_file and not backup_file["use_default_key"]:
+            st.markdown("Backup is encrypted!")
+            password = st.text_input(
+                "Decryption password",
+                help="This is the same password you used to encrypt your backup. Leave this empty if you did not use a password when backing up.",
+            )
+
+            if st.button("Decrypt and restore"):
+                load_settings(backup_file, password)
+        else:
+            load_settings(backup_file, None)
+    except InvalidEncryptionKey:
+        st.error("Invalid decryption key.", icon="🚨")
+    else:
+        st.success("Settings restored!", icon="✔️")
