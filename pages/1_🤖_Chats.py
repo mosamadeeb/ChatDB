@@ -90,7 +90,7 @@ if not conversation_exists(st.session_state.current_conversation):
         predictor_model = st.text_input("Predictor model", value="text-davinci-003")
 
         vector_store_id = st.selectbox("Select vector store", tuple(st.session_state.vector_stores.keys()))
-        database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
+        database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()), max_selections=1)
 
         if st.form_submit_button():
             if conversation_id in st.session_state.conversations:
