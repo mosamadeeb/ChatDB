@@ -31,6 +31,17 @@ A web app built with [Streamlit](https://streamlit.io/) that allows you to chat 
 - Create a new conversation by specifying the GPT model and selecting a vector store and database connections
 - Start chatting 🗣 ↔️ 🤖
 
+## Compatibility
+Currently supported databases:
+- PostgreSQL (using `psycopg2`)
+- MySQL and MariaDB (using `mysqlclient`)
+- Microsoft SQL Server (using `pyodbc`)
+
+Currently supported vector stores:
+- Pinecone
+
+**If your database, DB API, or vector store are not here, feel free to open a feature request. Contributions are also very welcome!**
+
 ## Building
 If you want to build and test locally:
 - Clone the repository
