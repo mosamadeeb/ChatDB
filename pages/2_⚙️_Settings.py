@@ -33,7 +33,7 @@ st.divider()
 
 st.markdown("## OpenAI API key")
 with st.form("openai_key_form", clear_on_submit=True):
-    api_key = st.text_input("API key")
+    api_key = st.text_input("API key", type="password")
 
     if st.form_submit_button():
         set_openai_api_key(api_key)
@@ -95,19 +95,23 @@ with st.expander("Configure"):
             # Remove existing vector store if we're going to rename it
             st.session_state.vector_stores.pop(props.id)
 
-        match vector_store_type:
-            case VectorStoreType.InMemory:
-                st.session_state.vector_stores[vector_store_id] = InMemoryVectorStoreProps(vector_store_id)
-            case VectorStoreType.PineconeDB:
-                pinecone_api = st.session_state["pinecone_api_input"]
-                pinecone_env = st.session_state["pinecone_env_input"]
-                pinecone_index_name = st.session_state["pinecone_index_name_input"]
+        if not props and vector_store_id in st.session_state.vector_stores:
+            # A new entry is being added, so it should have a unique id
+            st.error("Vector store identifier has to be unique!", icon="🚨")
+        else:
+            match vector_store_type:
+                case VectorStoreType.InMemory:
+                    st.session_state.vector_stores[vector_store_id] = InMemoryVectorStoreProps(vector_store_id)
+                case VectorStoreType.PineconeDB:
+                    pinecone_api = st.session_state["pinecone_api_input"]
+                    pinecone_env = st.session_state["pinecone_env_input"]
+                    pinecone_index_name = st.session_state["pinecone_index_name_input"]
 
-                st.session_state.vector_stores[vector_store_id] = PineconeVectorStoreProps(
-                    vector_store_id, pinecone_api, pinecone_env, pinecone_index_name
-                )
+                    st.session_state.vector_stores[vector_store_id] = PineconeVectorStoreProps(
+                        vector_store_id, pinecone_api, pinecone_env, pinecone_index_name
+                    )
 
-        st.toast("Vector store saved!", icon="✔️")
+            st.success("Vector store saved!", icon="✔️")
 
 with st.expander("View vector stores"):
     st.table({k: v.get_props() for k, v in st.session_state.vector_stores.items()})
@@ -140,11 +144,15 @@ with st.expander("Configure"):
             # Remove existing database if we're going to rename it
             st.session_state.databases.pop(props.id)
 
-        st.session_state.databases[database_id] = DatabaseProps(database_id, database_uri)
-        st.toast("Database saved!", icon="✔️")
+        if not props and vector_store_id in st.session_state.vector_stores:
+            # A new entry is being added, so it should have a unique id
+            st.error("Database identifier has to be unique!", icon="🚨")
+        else:
+            st.session_state.databases[database_id] = DatabaseProps(database_id, database_uri)
+            st.success("Database saved!", icon="✔️")
 
 with st.expander("View databases"):
-    st.table({k: {"URI": st.session_state.databases[k].uri} for k in st.session_state.databases})
+    st.table({k: {"URI": st.session_state.databases[k].get_uri_without_password()} for k in st.session_state.databases})
 
 st.divider()
 
@@ -154,6 +162,7 @@ st.markdown("- ### Backup")
 password = st.text_input(
     "Encryption password",
     help="This will be used to encrypt your API keys before backup. If no password is provided, the data will still be encrypted but using a common encryption key",
+    type="password",
 )
 
 with st.empty():
@@ -179,6 +188,7 @@ if upload_file:
             password = st.text_input(
                 "Decryption password",
                 help="This is the same password you used to encrypt your backup. Leave this empty if you did not use a password when backing up.",
+                type="password",
             )
 
             if st.button("Decrypt and restore"):

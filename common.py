@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import IntEnum
@@ -38,7 +39,7 @@ class PineconeVectorStoreProps(BaseVectorStoreProps):
     def get_props(self) -> dict:
         return {
             "Type": "Pinecone",
-            "API key": self.api_key,
+            "API key": self.api_key[:6] + ("*" * (len(self.api_key) - 6)),
             "Environment": self.environment,
             "Index name": self.index_name,
         }
@@ -75,6 +76,15 @@ class DatabaseProps:
     def __init__(self, id, uri) -> None:
         self.id = id
         self.uri = uri
+
+    def get_uri_without_password(self) -> str:
+        match = re.search("(:(?!\/\/).+@)", self.uri)
+
+        if not match:
+            return self.uri
+
+        # Use fixed password length
+        return f'{self.uri[:match.start(0) + 1]}{"*" * 8}{self.uri[match.end(0) - 1:]}'
 
 
 class Message:
