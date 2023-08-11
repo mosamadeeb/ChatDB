@@ -19,6 +19,15 @@ Start by adding a vector store and some database connections in the *⚙️ Sett
 - Create a new conversation by specifying the GPT model and selecting a vector store and database connections
 - Start chatting 🗣 ↔️ 🤖
 
+## Compatibility
+Currently supported databases:
+- PostgreSQL (using `psycopg2`)
+- MySQL and MariaDB (using `mysqlclient`)
+- Microsoft SQL Server (using `pyodbc`)
+
+Currently supported vector stores:
+- Pinecone
+
 ## Contribution
 Check the [repository on GitHub](https://github.com/SutandoTsukai181/ChatDB) and feel free to contribute!
 Suggestions, feature requests, and issue reports are more than welcome.
