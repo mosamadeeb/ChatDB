@@ -1,9 +1,12 @@
 cryptography==41.0.3
+cx_oracle==8.3.0
 jsonpickle==3.0.1
 llama-hub==0.0.16
 llama-index==0.7.16
+mysqlclient==2.2.0
 openai==0.27.8
 pinecone-client==2.2.2
 psycopg2-binary==2.9.6
+pyodbc==4.0.39
 streamlit==1.25.0
 transformers==4.31.0
