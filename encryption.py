@@ -4,7 +4,7 @@ from hashlib import md5
 
 from cryptography.fernet import Fernet
 
-from common import DatabaseProps, VectorStoreType, get_vector_store_type
+from common import DatabaseProps
 
 
 def generate_key(password: str) -> bytes:
@@ -34,8 +34,6 @@ def encrypt_prop(v, encryption_key):
 
     if type(v).__name__ == DatabaseProps.__name__:
         v.uri = encrypt_attr(v.uri)
-    elif get_vector_store_type(v) == VectorStoreType.PineconeDB:
-        v.api_key = encrypt_attr(v.api_key)
 
     return v
 
@@ -46,7 +44,5 @@ def decrypt_prop(v, encryption_key):
 
     if type(v).__name__ == DatabaseProps.__name__:
         v.uri = decrypt_attr(v.uri)
-    elif get_vector_store_type(v) == VectorStoreType.PineconeDB:
-        v.api_key = decrypt_attr(v.api_key)
 
     return v

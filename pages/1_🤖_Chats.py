@@ -38,9 +38,7 @@ def conversation_exists(id: str) -> bool:
 def conversation_valid(id: str):
     if conversation_exists(id):
         conversation: Conversation = st.session_state.conversations[id]
-        return conversation.vector_store_id in st.session_state.vector_stores and all(
-            [x in st.session_state.databases for x in conversation.database_ids]
-        )
+        return all([x in st.session_state.databases for x in conversation.database_ids])
 
     return False
 
@@ -100,7 +98,6 @@ if not conversation_exists(st.session_state.current_conversation):
         agent_model = st.text_input("Agent model", value="gpt-3.5-turbo-0613")
         predictor_model = st.text_input("Predictor model", value="text-davinci-003")
 
-        vector_store_id = st.selectbox("Select vector store", tuple(st.session_state.vector_stores.keys()))
         database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
 
         if st.form_submit_button():
@@ -108,7 +105,7 @@ if not conversation_exists(st.session_state.current_conversation):
                 st.error("Conversation title has to be unique!", icon="🚨")
             else:
                 st.session_state.conversations[conversation_id] = Conversation(
-                    conversation_id, agent_model, predictor_model, vector_store_id, database_ids
+                    conversation_id, agent_model, predictor_model, database_ids
                 )
                 set_conversation(conversation_id)
 

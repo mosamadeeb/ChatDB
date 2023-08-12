@@ -8,10 +8,6 @@ from cryptography.fernet import InvalidToken as InvalidEncryptionKey
 from backup import backup_settings, load_settings
 from common import (
     DatabaseProps,
-    InMemoryVectorStoreProps,
-    PineconeVectorStoreProps,
-    VectorStoreType,
-    get_vector_store_type,
     init_session_state,
     set_openai_api_key,
 )
@@ -21,7 +17,6 @@ st.set_page_config(
     page_icon="⚙️",
 )
 
-NEW_VECTOR_STORE_TEXT = "➕ Add new vector store"
 NEW_DATABASE_TEXT = "➕ Add new database"
 
 # Initialize session state variables
@@ -42,79 +37,6 @@ if st.session_state.openai_key:
     st.info("API key is set.", icon="ℹ️")
 else:
     st.warning("API key is not set.", icon="⚠️")
-
-st.divider()
-
-# Vector stores
-st.markdown("## Vector stores")
-with st.expander("Configure"):
-    vector_store_selection = st.selectbox(
-        "Select vector store", (NEW_VECTOR_STORE_TEXT, *st.session_state.vector_stores.keys())
-    )
-
-    props = None
-    if vector_store_selection != NEW_VECTOR_STORE_TEXT:
-        props = st.session_state.vector_stores[vector_store_selection]
-
-    id = props.id if props else ""
-    index = int(get_vector_store_type(props)) if props else 0
-
-    vector_store_id = st.text_input(
-        "Vector store identifier",
-        value=id,
-        help="Identifying name for choosing a vector store when creating a conversation",
-    )
-
-    # Disable type selection for existing vector stores
-    select_disabled = props is not None
-    vector_store_type = st.selectbox(
-        "Vector store type",
-        (VectorStoreType.InMemory, VectorStoreType.PineconeDB),
-        index=index,
-        disabled=select_disabled,
-    )
-
-    # Set the correct type for existing vector stores
-    if select_disabled:
-        vector_store_type = get_vector_store_type(props)
-
-    match vector_store_type:
-        case VectorStoreType.InMemory:
-            pass
-        case VectorStoreType.PineconeDB:
-            api_key = props.api_key if props else ""
-            environment = props.environment if props else ""
-            index_name = props.index_name if props else ""
-
-            st.text_input("Pinecone API Key", value=api_key, key="pinecone_api_input", type="password")
-            st.text_input("Pinecone Environment", value=environment, key="pinecone_env_input")
-            st.text_input("Pinecone Index Name", value=index_name, key="pinecone_index_name_input")
-
-    if st.button("Submit", key="vector_submit_button"):
-        if props and props.id != vector_store_id:
-            # Remove existing vector store if we're going to rename it
-            st.session_state.vector_stores.pop(props.id)
-
-        if not props and vector_store_id in st.session_state.vector_stores:
-            # A new entry is being added, so it should have a unique id
-            st.error("Vector store identifier has to be unique!", icon="🚨")
-        else:
-            match vector_store_type:
-                case VectorStoreType.InMemory:
-                    st.session_state.vector_stores[vector_store_id] = InMemoryVectorStoreProps(vector_store_id)
-                case VectorStoreType.PineconeDB:
-                    pinecone_api = st.session_state["pinecone_api_input"]
-                    pinecone_env = st.session_state["pinecone_env_input"]
-                    pinecone_index_name = st.session_state["pinecone_index_name_input"]
-
-                    st.session_state.vector_stores[vector_store_id] = PineconeVectorStoreProps(
-                        vector_store_id, pinecone_api, pinecone_env, pinecone_index_name
-                    )
-
-            st.success("Vector store saved!", icon="✔️")
-
-with st.expander("View vector stores"):
-    st.table({k: v.get_props() for k, v in st.session_state.vector_stores.items()})
 
 st.divider()
 

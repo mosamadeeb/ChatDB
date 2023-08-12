@@ -6,7 +6,7 @@ import streamlit as st
 from common import Conversation, set_openai_api_key
 from encryption import DEFAULT_KEY, decrypt, decrypt_prop, encrypt, encrypt_prop, generate_key
 
-BACKUP_PROPS = ["openai_key", "vector_stores", "databases", "current_conversation"]
+BACKUP_PROPS = ["openai_key", "databases", "current_conversation"]
 
 
 def backup_settings(password: str) -> dict:

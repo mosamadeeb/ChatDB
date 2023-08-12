@@ -11,12 +11,12 @@ st.markdown(
 A web app built with [Streamlit](https://streamlit.io/) that allows you to chat with your databases using a GPT model.
 
 ## Getting started
-Start by adding a vector store and some database connections in the *⚙️ Settings* page.
+Start by adding some database connections in the *⚙️ Settings* page.
 
 - Go to the **⚙️ Settings** page
-- Provide your OpenAI API key, and add a vector store and some database connnections
+- Provide your OpenAI API key and add some database connnections
 - Go to the **🤖 Chats** page
-- Create a new conversation by specifying the GPT model and selecting a vector store and database connections
+- Create a new conversation by specifying the GPT model and selecting the databases you added
 - Start chatting 🗣 ↔️ 🤖
 
 ## Compatibility
@@ -24,9 +24,6 @@ Currently supported databases:
 - PostgreSQL (using `psycopg2`)
 - MySQL and MariaDB (using `mysqlclient`)
 - Microsoft SQL Server (using `pyodbc`)
-
-Currently supported vector stores:
-- Pinecone
 
 ## Contribution
 Check the [repository on GitHub](https://github.com/SutandoTsukai181/ChatDB) and feel free to contribute!
