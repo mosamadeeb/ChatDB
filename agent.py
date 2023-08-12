@@ -106,9 +106,6 @@ def get_query_tool(vector_store_id: str, database_id: str, predictor_model: str)
 
     documents = []
     for table in table_list:
-        if table.startswith("system$") or table.startswith("mendixsystem$") or table.startswith("gceuser"):
-            continue
-
         description = db_spec.describe_tables([table])
         documents.append(Document(text=f'Definition of "{table}" table:\n{description}'))
 
