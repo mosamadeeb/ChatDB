@@ -96,7 +96,6 @@ if not conversation_exists(st.session_state.current_conversation):
         conversation_id = st.text_input("Conversation title")
 
         agent_model = st.text_input("Agent model", value="gpt-3.5-turbo-0613")
-        predictor_model = st.text_input("Predictor model", value="text-davinci-003")
 
         database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
 
@@ -105,7 +104,7 @@ if not conversation_exists(st.session_state.current_conversation):
                 st.error("Conversation title has to be unique!", icon="🚨")
             else:
                 st.session_state.conversations[conversation_id] = Conversation(
-                    conversation_id, agent_model, predictor_model, database_ids
+                    conversation_id, agent_model, database_ids
                 )
                 set_conversation(conversation_id)
 

@@ -41,7 +41,6 @@ class Conversation:
     id: str
 
     agent_model: str
-    predictor_model: str
 
     database_ids: List[str]
 
@@ -57,13 +56,11 @@ class Conversation:
         self,
         id: str,
         agent_model: str,
-        predictor_model: str,
         database_ids: List[str],
         messages: List[Message] = None,
     ) -> None:
         self.id = id
         self.agent_model = agent_model
-        self.predictor_model = predictor_model
 
         self.database_ids = list(database_ids)
 
