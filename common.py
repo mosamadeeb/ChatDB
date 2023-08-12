@@ -110,7 +110,7 @@ class Conversation:
     database_ids: List[str]
 
     messages: List[Message]
-    query_results_queue: List[Tuple[str, list]]
+    query_results_queue: List[Tuple[str, str, list]]
 
     # Used to invalidate get_agent() cache
     # Whenever we update the vector stores/database ids of a conversation, we update this timestamp

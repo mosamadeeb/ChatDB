@@ -144,7 +144,7 @@ with st.expander("Configure"):
             # Remove existing database if we're going to rename it
             st.session_state.databases.pop(props.id)
 
-        if not props and vector_store_id in st.session_state.vector_stores:
+        if not props and database_id in st.session_state.databases:
             # A new entry is being added, so it should have a unique id
             st.error("Database identifier has to be unique!", icon="🚨")
         else:

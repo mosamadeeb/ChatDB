@@ -1,51 +1,15 @@
-from typing import Callable, Iterable, List
-
 import pinecone
 import streamlit as st
-from llama_hub.tools.database.base import DatabaseToolSpec
 from llama_index import Document, ServiceContext, StorageContext, VectorStoreIndex
 from llama_index.agent import OpenAIAgent
 from llama_index.agent.openai_agent import ChatMessage
 from llama_index.llms import OpenAI
-from llama_index.tools import QueryEngineTool, ToolMetadata
+from llama_index.tools import QueryEngineTool
+from llama_index.tools.types import ToolMetadata
 from llama_index.vector_stores import PineconeVectorStore, SimpleVectorStore
-from sqlalchemy import text
 
 from common import Conversation, DatabaseProps, VectorStoreType, get_vector_store_type
-
-
-class TrackingDatabaseToolSpec(DatabaseToolSpec):
-    handler: Callable[[str, Iterable], None]
-
-    def set_handler(self, func: Callable):
-        self.handler = func
-
-    def load_data(self, query: str) -> List[Document]:
-        """Query and load data from the Database, returning a list of Documents.
-
-        Args:
-            query (str): an SQL query to filter tables and rows.
-
-        Returns:
-            List[Document]: A list of Document objects.
-        """
-        documents = []
-        with self.sql_database.engine.connect() as connection:
-            if query is None:
-                raise ValueError("A query parameter is necessary to filter the data")
-            else:
-                result = connection.execute(text(query))
-
-            items = result.fetchall()
-
-            if self.handler:
-                self.handler(query, items)
-
-            for item in items:
-                # fetch each item
-                doc_str = ", ".join([str(entry) for entry in item])
-                documents.append(Document(text=doc_str))
-        return documents
+from multi_database import MultiDatabaseToolSpec, TrackingDatabaseToolSpec
 
 
 @st.cache_resource(show_spinner="Loading LLM...")
@@ -94,6 +58,9 @@ def get_database_spec(database_id: str) -> TrackingDatabaseToolSpec:
         uri=database.uri,
     )
 
+    # Set the database name for query tracking
+    db_spec.database_name = database_id
+
     return db_spec
 
 
@@ -119,21 +86,23 @@ def get_query_tool(vector_store_id: str, database_id: str, predictor_model: str)
         documents=documents, storage_context=storage_context, service_context=service_context
     )
 
+    clean_database_id = database_id.replace(" ", "_")
+
     engine = index.as_query_engine()
     query_tool = QueryEngineTool(
         query_engine=engine,
         metadata=ToolMetadata(
-            name="table_query_engine",
-            description="Contains table descriptions for the database",
+            name=f"{clean_database_id}_query_engine",
+            description=f"Contains table descriptions for the {clean_database_id} database",
         ),
     )
 
     return query_tool
 
 
-def database_spec_handler(query, items):
+def database_spec_handler(database, query, items):
     conversation = st.session_state.conversations[st.session_state.current_conversation]
-    conversation.query_results_queue.append((query, items))
+    conversation.query_results_queue.append((database, query, items))
 
 
 @st.cache_resource(show_spinner="Creating agent...")
@@ -143,21 +112,15 @@ def get_agent(conversation_id: str, last_update_timestamp: float):
 
     conversation: Conversation = st.session_state.conversations[conversation_id]
 
-    vector_store_id = conversation.vector_store_id
-
-    tools = []
+    # Set a handler that can be called whenever a query is executed
+    database_tools = MultiDatabaseToolSpec(handler=database_spec_handler)
 
     # Create tools
     for database_id in conversation.database_ids:
         db_spec = get_database_spec(database_id)
-        query_tool = get_query_tool(vector_store_id, database_id, conversation.predictor_model)
+        database_tools.add_database_tool_spec(database_id, db_spec)
 
-        # Set a handler that can be called whenever a query is executed
-        db_spec.set_handler(database_spec_handler)
-
-        # Add query tool and database tools
-        tools.append(query_tool)
-        tools += db_spec.to_tool_list()
+    tools = database_tools.to_tool_list()
 
     # Load chat history from the conversation's messages
     chat_history = list(map(lambda m: ChatMessage(role=m.role, content=m.content), conversation.messages))

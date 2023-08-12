@@ -2,11 +2,13 @@ import json
 import re
 
 import streamlit as st
-from sqlalchemy.exc import DBAPIError
+from llama_index.llms.base import ChatMessage, MessageRole
+from sqlalchemy.exc import DBAPIError, NoSuchColumnError, NoSuchTableError
 
 from agent import get_agent
 from backup import backup_conversation, load_conversation
 from common import Conversation, init_session_state
+from multi_database import NoSuchDatabaseError
 
 st.set_page_config(
     page_title="Chats",
@@ -43,6 +45,13 @@ def conversation_valid(id: str):
     return False
 
 
+def display_query(database, query, results):
+    with st.expander("View SQL query..."):
+        st.markdown(f"Database: `{database}`")
+        st.markdown(f"`{query}`")
+        st.table(results)
+
+
 # Sidebar
 with st.sidebar:
     st.markdown("## Chats")
@@ -69,8 +78,10 @@ with st.sidebar:
                 if st.button("Backup conversation"):
                     backup_file = json.dumps(backup_conversation(conversation_id))
 
-                    no_whitespace_name = re.sub(r"\s+", '_', conversation_id)
-                    st.download_button("Download backup JSON", data=backup_file, file_name=f"chatdb_{no_whitespace_name}.json")
+                    no_whitespace_name = re.sub(r"\s+", "_", conversation_id)
+                    st.download_button(
+                        "Download backup JSON", data=backup_file, file_name=f"chatdb_{no_whitespace_name}.json"
+                    )
 
         st.divider()
 
@@ -90,7 +101,7 @@ if not conversation_exists(st.session_state.current_conversation):
         predictor_model = st.text_input("Predictor model", value="text-davinci-003")
 
         vector_store_id = st.selectbox("Select vector store", tuple(st.session_state.vector_stores.keys()))
-        database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()), max_selections=1)
+        database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
 
         if st.form_submit_button():
             if conversation_id in st.session_state.conversations:
@@ -120,17 +131,20 @@ else:
         with st.chat_message(message.role):
             st.markdown(message.content)
 
-            for query, results in message.query_results:
-                with st.expander("View SQL query..."):
-                    st.markdown(f"`{query}`")
-                    st.table(results)
+            for database, query, results in message.query_results:
+                display_query(database, query, results)
 
     # Initialize the agent
     get_agent(conversation_id, conversation.last_update_timestamp)
 
     if len(conversation.messages) == 0:
         # Add initial message
-        conversation.add_message("assistant", "How can I help you today?")
+        role = "assistant"
+        content = "How can I help you today?"
+        conversation.add_message(role, content)
+
+        with st.chat_message(role):
+            st.markdown(content)
 
     use_streaming = True
     prompt = st.chat_input("Your query")
@@ -152,42 +166,91 @@ else:
 
         # Retrieve agent
         agent = get_agent(conversation_id, conversation.last_update_timestamp)
-        full_response = ""
 
+        # Initialize auto retry count
+        auto_retry_count = 3
         show_retry_buttons = False
 
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
+            full_response = ""
 
-            try:
-                if use_streaming:
-                    # Incrementally display response as it is streamed from the agent
-                    for response in agent.stream_chat(prompt).response_gen:
-                        full_response += response
-                        message_placeholder.markdown(full_response + "▌")
-                else:
-                    # Receive the whole response before displaying it
-                    message_placeholder.markdown("*Thinking...*")
-                    full_response = agent.chat(prompt).response
+            exception: str
+            system_message: str
 
-            except DBAPIError as e:
-                # Show the error to the user
-                full_response = "[System] An SQL error has occurred:\n\n"
-                full_response += f'Error type: "{type(e.orig).__name__}"\n\n'
-                full_response += "```" + str(e.orig).replace("\n", "\n\n") + "```"
+            while True:
+                try:
+                    exception = ""
+                    system_message = ""
 
-            except Exception as e:
-                # Show the error to the user and add a "retry" button
-                full_response = "[System] An error has occurred:\n\n"
-                full_response += "```" + str(e).replace("\n", "\n\n") + "```"
+                    if use_streaming:
+                        # Incrementally display response as it is streamed from the agent
+                        for response in agent.stream_chat(prompt).response_gen:
+                            full_response += response
+                            message_placeholder.markdown(full_response + "▌")
+                    else:
+                        # Receive the whole response before displaying it
+                        message_placeholder.markdown("*Thinking...*")
+                        full_response = agent.chat(prompt).response
 
-                show_retry_buttons = True
-            else:
-                if full_response == "":
-                    # Something wrong happened
-                    full_response = "[System] An error has occurred, possibly related to streaming."
+                # Give the agent some useful info about the error and what it needs to do to avoid it
+                except NoSuchColumnError as e:
+                    exception = e
+                    system_message = f"Error: {type(e).__name__}\n"
+                    system_message += "Use describe_tables() function to retrieve details about the table."
+
+                except NoSuchTableError as e:
+                    exception = e
+                    system_message = f"Error: {type(e).__name__}\n"
+                    system_message += "Use list_tables() function to get a list of the tables."
+
+                except NoSuchDatabaseError as e:
+                    exception = e
+                    system_message = f"Error: {type(e).__name__}\n"
+                    system_message += "Use list_databases() function to get a list of the databases."
+
+                except DBAPIError as e:
+                    exception = e.orig
+                    system_message = f"Error: {type(e.orig).__name__}\n"
+                    system_message += "Use describe_tables() function to retrieve details about the table."
+
+                except Exception as e:
+                    # This is NOT an exception the agent should see
+
+                    # Show the error to the user and add a "retry" button
+                    full_response = "[System] An error has occurred:\n\n"
+                    full_response += "```" + str(e).replace("\n", "\n\n") + "```"
+
                     show_retry_buttons = True
+                else:
+                    if full_response == "":
+                        # Something wrong happened
+                        full_response = "[System] An error has occurred, possibly related to streaming."
+                        show_retry_buttons = True
+
+                if exception:
+                    # Let the agent know about the error
+                    agent._memory.put(
+                        ChatMessage(
+                            content=system_message,
+                            role=MessageRole.SYSTEM,
+                        )
+                    )
+
+                    # Give the agent another chance to try the tool that was recommended in the previous error
+                    if auto_retry_count > 0:
+                        auto_retry_count -= 1
+                        continue
+
+                    # Show the error to the user
+                    full_response = "[System] An SQL error has occurred:\n\n"
+                    full_response += f'Error type: "{type(exception).__name__}"\n\n'
+                    full_response += "```" + str(exception).replace("\n", "\n\n") + "```"
+
+                    show_retry_buttons = True
+
+                break
 
             # Display full message once it is retrieved
             message_placeholder.markdown(full_response)
@@ -198,11 +261,9 @@ else:
 
             # Show expandable elements for every SQL query generated by this prompt
             query_results = []
-            for query, results in conversation.query_results_queue:
-                query_results.append((query, results))
-                with st.expander("View SQL query..."):
-                    st.markdown(f"`{query}`")
-                    st.table(results)
+            for database, query, results in conversation.query_results_queue:
+                query_results.append((database, query, results))
+                display_query(database, query, results)
 
             conversation.query_results_queue = []
 
