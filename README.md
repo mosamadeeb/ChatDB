@@ -26,9 +26,9 @@ A web app built with [Streamlit](https://streamlit.io/) that allows you to chat 
 ## Getting started
 - Open the [Streamlit app](https://chat-db.streamlit.app/) in your browser: [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chat-db.streamlit.app/)
 - Go to the **⚙️ Settings** page
-- Provide your OpenAI API key, and add a vector store and some database connnections
+- Provide your OpenAI API key and add some database connnections
 - Go to the **🤖 Chats** page
-- Create a new conversation by specifying the GPT model and selecting a vector store and database connections
+- Create a new conversation by specifying the GPT model and selecting the databases you added
 - Start chatting 🗣 ↔️ 🤖
 
 ## Compatibility
@@ -37,10 +37,7 @@ Currently supported databases:
 - MySQL and MariaDB (using `mysqlclient`)
 - Microsoft SQL Server (using `pyodbc`)
 
-Currently supported vector stores:
-- Pinecone
-
-**If your database, DB API, or vector store are not here, feel free to open a feature request. Contributions are also very welcome!**
+**If your database or DB API are not here, feel free to open a feature request. Contributions are also very welcome!**
 
 ## Building
 If you want to build and test locally:
@@ -52,7 +49,6 @@ If you want to build and test locally:
 - [Streamlit](https://streamlit.io/)
 - [LlamaIndex 🦙](https://www.llamaindex.ai/)
 - [LlamaHub 🦙](https://github.com/emptycrown/llama-hub)
-- [Pinecone Python client](https://github.com/pinecone-io/pinecone-python-client)
 - [SQLAlchemy](https://www.sqlalchemy.org/)
 - [UI Bakery SQL playground](https://uibakery.io/sql-playground)
 
