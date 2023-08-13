@@ -23,6 +23,7 @@ Start by adding some database connections in the *⚙️ Settings* page.
 Currently supported databases:
 - PostgreSQL (using `psycopg2`)
 - MySQL and MariaDB (using `mysqlclient`)
+- Oracle (using `cx_oracle`)
 - Microsoft SQL Server (using `pyodbc`)
 
 ## Contribution

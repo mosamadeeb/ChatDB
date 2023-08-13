@@ -77,9 +77,10 @@ with st.sidebar:
                     backup_file = json.dumps(backup_conversation(conversation_id))
 
                     no_whitespace_name = re.sub(r"\s+", "_", conversation_id)
-                    st.download_button(
+                    if st.download_button(
                         "Download backup JSON", data=backup_file, file_name=f"chatdb_{no_whitespace_name}.json"
-                    )
+                    ):
+                        st.toast("Download started.", icon="✔️")
 
         st.divider()
 
@@ -94,8 +95,7 @@ if not conversation_exists(st.session_state.current_conversation):
     # Display form for creating a new conversation
     with st.form("new_conversation_form"):
         conversation_id = st.text_input("Conversation title")
-
-        agent_model = st.text_input("Agent model", value="gpt-3.5-turbo-0613")
+        agent_model = st.text_input("Agent model", value="gpt-3.5-turbo-0613", help="OpenAI model. See https://platform.openai.com/docs/models")
 
         database_ids = st.multiselect("Select databases", tuple(st.session_state.databases.keys()))
 

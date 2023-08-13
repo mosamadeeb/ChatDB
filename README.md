@@ -35,6 +35,7 @@ A web app built with [Streamlit](https://streamlit.io/) that allows you to chat 
 Currently supported databases:
 - PostgreSQL (using `psycopg2`)
 - MySQL and MariaDB (using `mysqlclient`)
+- Oracle (using `cx_oracle`)
 - Microsoft SQL Server (using `pyodbc`)
 
 **If your database or DB API are not here, feel free to open a feature request. Contributions are also very welcome!**

@@ -6,11 +6,7 @@ import streamlit as st
 from cryptography.fernet import InvalidToken as InvalidEncryptionKey
 
 from backup import backup_settings, load_settings
-from common import (
-    DatabaseProps,
-    init_session_state,
-    set_openai_api_key,
-)
+from common import DatabaseProps, init_session_state, set_openai_api_key
 
 st.set_page_config(
     page_title="Settings",
@@ -56,10 +52,16 @@ with st.expander("Configure"):
         uri = props.uri
 
     database_id = st.text_input(
-        "Database identifier", value=id, help="Identifying name for choosing a database when creating a conversation"
+        "Database identifier",
+        value=id,
+        help="Choose a proper, relevant name or just the database name. Used by the model to distinguish between different databases.",
     )
 
-    database_uri = st.text_input("Connection URI", value=uri)
+    database_uri = st.text_input(
+        "Connection URI",
+        value=uri,
+        help="Use the format: `dialect://username:password@host:port/database`, where dialect can be postgresql, mysql, oracle, etc.",
+    )
 
     if st.button("Submit", key="database_submit_button"):
         if props and props.id != database_id:
